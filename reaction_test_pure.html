@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>반응속도 테스트 · PURE</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --card:#0b1220; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937; --green:#22c55e; --red:#ef4444; --shadow:0 8px 26px rgba(0,0,0,0.35); }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Noto Sans KR,'Apple SD Gothic Neo','맑은 고딕',sans-serif}
+    *{box-sizing:border-box}
+    header{padding:14px 12px;text-align:center;position:sticky;top:0;background:linear-gradient(180deg, rgba(17,24,39,0.92), rgba(17,24,39,0.86));backdrop-filter: blur(8px);border-bottom:1px solid var(--border);z-index:10}
+    header h1{margin:0;font-size:1.2rem}
+    header p{margin:6px 0 0;color:var(--muted);font-size:0.95rem}
+    .container{padding:12px;display:grid;grid-template-columns:1fr;gap:12px;max-width:900px;margin:0 auto}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:12px;box-shadow:var(--shadow)}
+    .arena{display:grid;place-items:center;background:#0b1220;border:1px solid var(--border);border-radius:18px;height:380px;touch-action:none;position:relative;overflow:hidden}
+    .arena.go{background:#0b3a1d}
+    .arena.fail{background:#2a0b0b}
+    .state{position:absolute;top:12px;left:12px;color:#93c5fd;font-size:0.9rem}
+    .count{position:absolute;top:12px;right:12px;color:#e5e7eb;font-size:0.95rem}
+    .center{font-size:2.2rem;font-weight:800;text-align:center}
+    .sub{margin-top:6px;color:#cbd5e1;text-align:center}
+    .btns{display:flex;gap:8px;justify-content:center;margin-top:8px}
+    button{padding:10px 14px;border-radius:12px;border:1px solid #374151;background:var(--card);color:var(--text);font-size:0.95rem;cursor:pointer}
+    button.primary{background:linear-gradient(180deg,#16a34a,#15803d);border-color:#14532d}
+    button.warn{background:linear-gradient(180deg,#f59e0b,#d97706);border-color:#b45309}
+    .kpi{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+    @media (max-width:800px){.kpi{grid-template-columns:1fr 1fr}}
+    .kpi .item{background:#0b1220;border:1px solid var(--border);border-radius:14px;padding:12px}
+    .kpi .title{color:#9ca3af;font-size:0.85rem;margin-bottom:6px}
+    .kpi .value{font-size:1.25rem;font-weight:800}
+    .tableWrap{overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid var(--border)}
+    th{color:#9ca3af;text-align:left}
+    td{text-align:right}
+    td.left{text-align:left}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>반응속도 테스트 · PURE</h1>
+    <p>랜덤 대기 후 화면이 <b>초록색</b>으로 바뀌면 즉시 탭/클릭! 예측 가능한 힌트(진행바/소리)는 없습니다.</p>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>테스트</h2>
+      <div id="arena" class="arena ready">
+        <div class="state" id="state">대기</div>
+        <div class="count" id="count">5회 남음</div>
+        <div>
+          <div class="center" id="center">시작 버튼</div>
+          <div class="sub" id="sub">초록색 이전에 누르면 부정출발로 처리됩니다.</div>
+        </div>
+      </div>
+      <div class="btns">
+        <button id="start" class="primary">시작(5회)</button>
+        <button id="reset">리셋</button>
+        <button id="share" class="warn">결과 공유</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>요약</h2>
+      <div class="kpi" id="kpi"></div>
+      <details style="margin-top:8px;">
+        <summary>회차별 상세</summary>
+        <div id="detail"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>친구 리더보드(로컬)</h2>
+      <div class="btns" style="justify-content:flex-start;flex-wrap:wrap">
+        <input id="nickname" placeholder="닉네임(선택)" style="flex:1;min-width:160px;padding:10px;border-radius:12px;border:1px solid #374151;background:#0b1220;color:#e5e7eb" />
+        <button id="saveLB">내 평균 저장</button>
+        <button id="clearLB">초기화</button>
+      </div>
+      <div class="tableWrap" style="margin-top:8px;">
+        <table>
+          <thead><tr><th>닉네임</th><th>최고(ms)</th><th>평균(ms)</th><th>일시</th></tr></thead>
+          <tbody id="lbBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const arena = document.getElementById('arena');
+  const stateEl = document.getElementById('state');
+  const countEl = document.getElementById('count');
+  const centerEl = document.getElementById('center');
+  const subEl = document.getElementById('sub');
+  const startBtn = document.getElementById('start');
+  const resetBtn = document.getElementById('reset');
+  const shareBtn = document.getElementById('share');
+  const kpiDiv = document.getElementById('kpi');
+  const detailDiv = document.getElementById('detail');
+  const nickname = document.getElementById('nickname');
+  const saveLBBtn = document.getElementById('saveLB');
+  const clearLBBtn = document.getElementById('clearLB');
+  const lbBody = document.getElementById('lbBody');
+
+  let running=false, waiting=false, readyTime=0, trials=[], failCount=0, remain=5, timerId=null;
+
+  function fmtMs(x){ return Math.round(x) + ' ms'; }
+  function setState(s){ stateEl.textContent = s; }
+  function setArena(cls){ arena.className = 'arena ' + cls; }
+
+  function updateKPI(){
+    const valid = trials.filter(Number.isFinite);
+    const best = valid.length? Math.min(...valid):0;
+    const avg = valid.length? valid.reduce((a,b)=>a+b,0)/valid.length:0;
+    const worst = valid.length? Math.max(...valid):0;
+    const html = [
+      {t:'최고(최저)', v: best? fmtMs(best):'-'},
+      {t:'평균', v: avg? fmtMs(avg):'-'},
+      {t:'최저(최고)', v: worst? fmtMs(worst):'-'},
+      {t:'부정출발', v: failCount+'회'},
+    ].map(k=>`<div class='item'><div class='title'>${k.t}</div><div class='value'>${k.v}</div></div>`).join('');
+    kpiDiv.innerHTML = html;
+    const rows = trials.map((v,i)=>`<tr><td class='left'>${i+1}회</td><td>${Number.isFinite(v)? fmtMs(v):'실패'}</td></tr>`).join('');
+    detailDiv.innerHTML = `<table><thead><tr><th>회차</th><th>측정</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function reset(){
+    running=false; waiting=false; readyTime=0; trials=[]; failCount=0; remain=5; clearTimeout(timerId); timerId=null;
+    setArena('ready'); setState('대기'); countEl.textContent='5회 남음'; centerEl.textContent='시작 버튼'; subEl.textContent='초록색 이전에 누르면 부정출발로 처리됩니다.';
+    updateKPI();
+  }
+
+  function scheduleGo(){
+    // 1.6~3.6s 랜덤 대기 (힌트 없음)
+    const delay = 1600 + Math.random()*2000;
+    waiting = true; readyTime=0; setArena(''); setState('준비'); centerEl.textContent='준비...'; subEl.textContent='화면만 보고 기다리세요.';
+    timerId = setTimeout(()=>{ setArena('go'); setState('지금!'); centerEl.textContent='지금!'; subEl.textContent='즉시 탭/클릭!'; readyTime = performance.now(); }, delay);
+  }
+
+  function start(){ if(running) return; running=true; trials=[]; failCount=0; remain=5; updateKPI(); next(); }
+  function next(){ if(remain<=0){ finish(); return; } countEl.textContent = remain + '회 남음'; scheduleGo(); }
+  function finish(){ running=false; setArena(''); setState('완료'); centerEl.textContent='완료'; subEl.textContent='리셋으로 재측정'; }
+
+  function tap(){
+    if(!running) return;
+    const now = performance.now();
+    if(waiting && (!readyTime || now < readyTime)){
+      failCount++; waiting=false; clearTimeout(timerId); timerId=null; setArena('fail'); setState('부정출발'); centerEl.textContent='부정출발'; subEl.textContent='조금 더 기다리세요.';
+      updateKPI(); remain--; setTimeout(next, 700);
+    } else if(readyTime){
+      const rt = now - readyTime; trials.push(rt); waiting=false; setArena(''); setState('기록'); centerEl.textContent=fmtMs(rt); subEl.textContent='좋아요!';
+      updateKPI(); remain--; setTimeout(next, 700);
+    }
+  }
+
+  function share(){
+    const valid = trials.filter(Number.isFinite);
+    const best = valid.length? Math.min(...valid):0;
+    const avg = valid.length? valid.reduce((a,b)=>a+b,0)/valid.length:0;
+    const text = `[반응속도] 최고 ${Math.round(best)} ms · 평균 ${Math.round(avg)} ms · 부정출발 ${failCount}회`;
+    const url = location.href; const payload = `${text}\n${url}`;
+    if(navigator.share){ navigator.share({title:'반응속도 테스트', text:text, url:url}).catch(()=>copy(payload)); } else { copy(payload); }
+  }
+  function copy(t){ navigator.clipboard.writeText(t).then(()=>alert('결과/링크가 복사되었습니다.')); }
+
+  // 리더보드
+  function loadLB(){ const raw = localStorage.getItem('reactionLB'); const arr = raw? JSON.parse(raw): []; lbBody.innerHTML = arr.map(r=>`<tr><td class='left'>${r.name||'-'}</td><td>${r.best} ms</td><td>${r.avg} ms</td><td>${r.time}</td></tr>`).join(''); }
+  function saveLB(){ const valid = trials.filter(Number.isFinite); if(!valid.length){ alert('기록이 없습니다. 먼저 측정하세요.'); return; } const best = Math.round(Math.min(...valid)); const avg = Math.round(valid.reduce((a,b)=>a+b,0)/valid.length); const row = { name:nickname.value||'', best, avg, time:new Date().toLocaleString() }; const raw = localStorage.getItem('reactionLB'); const arr = raw? JSON.parse(raw): []; arr.push(row); arr.sort((a,b)=>a.avg - b.avg); localStorage.setItem('reactionLB', JSON.stringify(arr)); loadLB(); }
+  function clearLB(){ localStorage.removeItem('reactionLB'); loadLB(); }
+
+  // events
+  startBtn.addEventListener('click', start);
+  resetBtn.addEventListener('click', reset);
+  shareBtn.addEventListener('click', share);
+  arena.addEventListener('click', tap);
+  arena.addEventListener('touchstart', (e)=>{ tap(); e.preventDefault(); }, {passive:false});
+  saveLBBtn.addEventListener('click', saveLB);
+  clearLBBtn.addEventListener('click', clearLB);
+  window.addEventListener('keydown', (e)=>{ const k=e.key.toLowerCase(); if(k==='enter') start(); if(k==='r') reset(); if(k===' '||k==='spacebar') tap(); });
+
+  // init
+  reset(); loadLB();
+})();
+</script>
+</body>
+</html>
