@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>반응속도 테스트</title>
+  <meta name="description" content="클릭/스페이스바로 반응속도 측정 + 결과 공유 링크 + 로컬 랭킹" />
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --card2:#0f1730;
+      --text:#e9ecff;
+      --muted:#aab2d5;
+      --good:#27d17f;
+      --bad:#ff4d4d;
+      --warn:#ffcc66;
+      --line:rgba(255,255,255,.08);
+      --shadow:0 12px 30px rgba(0,0,0,.35);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+      background: radial-gradient(1200px 800px at 15% 10%, rgba(85,115,255,.25), transparent 55%),
+                  radial-gradient(1000px 800px at 90% 20%, rgba(39,209,127,.16), transparent 55%),
+                  radial-gradient(900px 700px at 50% 90%, rgba(255,204,102,.14), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+    }
+    .wrap{
+      width:min(980px, 100%);
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width: 900px){
+      .wrap{grid-template-columns:1fr}
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), transparent 18%),
+                  var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card h2, .card h3{
+      margin:0;
+      font-weight:750;
+      letter-spacing:-.02em;
+    }
+    .head{
+      padding:16px 16px 12px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+    .head .sub{
+      margin-top:6px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+    .pill{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color:var(--muted);
+      white-space:nowrap;
+      height:fit-content;
+    }
+    .body{padding:16px}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 600px){
+      .grid{grid-template-columns:1fr}
+    }
+    label{
+      font-size:12px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:6px;
+    }
+    input, select, button, textarea{
+      width:100%;
+      font:inherit;
+    }
+    input, select, textarea{
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.18);
+      color:var(--text);
+      outline:none;
+    }
+    textarea{min-height:86px; resize:vertical}
+    input::placeholder, textarea::placeholder{color: rgba(233,236,255,.45)}
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .row > *{flex:1}
+    .btn{
+      cursor:pointer;
+      border:none;
+      padding:12px 14px;
+      border-radius:12px;
+      font-weight:700;
+      color:var(--text);
+      background: rgba(255,255,255,.08);
+      border:1px solid var(--line);
+      transition: transform .06s ease, background .12s ease;
+    }
+    .btn:hover{background: rgba(255,255,255,.12)}
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{
+      background: rgba(85,115,255,.25);
+      border-color: rgba(85,115,255,.35);
+    }
+    .btn.primary:hover{background: rgba(85,115,255,.32)}
+    .btn.good{
+      background: rgba(39,209,127,.18);
+      border-color: rgba(39,209,127,.28);
+    }
+    .btn.bad{
+      background: rgba(255,77,77,.16);
+      border-color: rgba(255,77,77,.25);
+    }
+    .stage{
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action: manipulation;
+      height: 320px;
+      border-radius: 16px;
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12));
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      text-align:center;
+      padding:16px;
+      position:relative;
+      overflow:hidden;
+    }
+    .stage small{color:var(--muted)}
+    .big{
+      font-size: 34px;
+      font-weight: 850;
+      letter-spacing: -0.04em;
+    }
+    .hint{
+      font-size: 14px;
+      color: var(--muted);
+      line-height:1.55;
+    }
+    .status{
+      position:absolute;
+      top:12px;
+      right:12px;
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.22);
+      color: var(--muted);
+    }
+    .status.good{color:var(--good); border-color: rgba(39,209,127,.35)}
+    .status.warn{color:var(--warn); border-color: rgba(255,204,102,.35)}
+    .status.bad{color:var(--bad); border-color: rgba(255,77,77,.35)}
+    .kpi{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+      margin-top:12px;
+    }
+    @media (max-width: 700px){
+      .kpi{grid-template-columns: repeat(2, 1fr)}
+    }
+    .kpi .box{
+      background: rgba(0,0,0,.16);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px 10px;
+    }
+    .kpi .t{font-size:12px; color:var(--muted)}
+    .kpi .v{margin-top:4px; font-size:18px; font-weight:800}
+    .list{
+      margin-top:12px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow:hidden;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    th, td{
+      padding:10px 10px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+      color: var(--text);
+    }
+    th{color:var(--muted); font-weight:700; background: rgba(255,255,255,.03)}
+    tr:last-child td{border-bottom:none}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;}
+    .toast{
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.55);
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 13px;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .18s ease;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .toast.show{opacity:1}
+    .muted{color:var(--muted)}
+    .mini{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.45}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Left: Test -->
+    <section class="card">
+      <div class="head">
+        <div>
+          <h2>반응속도 테스트</h2>
+          <div class="sub">
+            화면이 <b style="color:var(--good)">초록</b>으로 바뀌면 <b>클릭</b> 또는 <b>스페이스바</b>로 반응하세요.<br/>
+            너무 빨리 누르면(플라잉) 해당 시도는 무효 처리됩니다.
+          </div>
+        </div>
+        <div class="pill" id="envPill">오프라인 · 단일 HTML</div>
+      </div>
+
+      <div class="body">
+        <div class="grid">
+          <div>
+            <label>이름(랭킹/공유용)</label>
+            <input id="name" placeholder="예: 홍길동" maxlength="20" />
+          </div>
+          <div>
+            <label>시도 횟수</label>
+            <select id="trials">
+              <option value="3">3회</option>
+              <option value="5" selected>5회</option>
+              <option value="8">8회</option>
+              <option value="10">10회</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:12px" class="stage" id="stage" role="button" tabindex="0" aria-label="반응속도 측정 스테이지">
+          <div class="status warn" id="status">대기</div>
+          <div class="big" id="stageTitle">시작 버튼을 누르세요</div>
+          <div class="hint" id="stageHint">준비되면 아래 “시작”을 누르고, 초록색으로 바뀌는 순간 반응하세요.</div>
+          <small id="stageSmall">클릭 / 스페이스바 가능</small>
+        </div>
+
+        <div style="margin-top:12px" class="row">
+          <button class="btn primary" id="btnStart">시작</button>
+          <button class="btn" id="btnReset">초기화</button>
+          <button class="btn bad" id="btnClearLocal">로컬 랭킹 지우기</button>
+        </div>
+
+        <div class="kpi" id="kpi" style="display:none">
+          <div class="box">
+            <div class="t">평균</div>
+            <div class="v" id="kAvg">-</div>
+          </div>
+          <div class="box">
+            <div class="t">중앙값</div>
+            <div class="v" id="kMed">-</div>
+          </div>
+          <div class="box">
+            <div class="t">최고(가장 빠름)</div>
+            <div class="v" id="kBest">-</div>
+          </div>
+          <div class="box">
+            <div class="t">표준편차</div>
+            <div class="v" id="kStd">-</div>
+          </div>
+        </div>
+
+        <div class="list" id="attemptList" style="display:none">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:70px">회차</th>
+                <th>결과</th>
+                <th style="width:110px">상태</th>
+              </tr>
+            </thead>
+            <tbody id="attemptTbody"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px" class="grid">
+          <div>
+            <label>공유 링크</label>
+            <input id="shareLink" class="mono" placeholder="결과 생성 후 표시됩니다" readonly />
+            <div class="row" style="margin-top:10px">
+              <button class="btn good" id="btnMakeShare" disabled>공유 링크 만들기</button>
+              <button class="btn" id="btnCopyShare" disabled>링크 복사</button>
+            </div>
+            <div class="mini">
+              * 공유 링크는 URL에 결과를 담아 전달합니다(서버 불필요).<br/>
+              * 링크를 받은 사람은 “결과 카드”를 그대로 확인할 수 있습니다.
+            </div>
+          </div>
+
+          <div>
+            <label>결과 저장(로컬 랭킹)</label>
+            <textarea id="resultNote" placeholder="(선택) 메모: 예) 퇴근 후, 카페에서 측정"></textarea>
+            <div class="row" style="margin-top:10px">
+              <button class="btn good" id="btnSaveLocal" disabled>로컬 랭킹에 저장</button>
+              <button class="btn" id="btnExportCsv">CSV 내보내기</button>
+            </div>
+            <div class="mini">
+              * 로컬 랭킹은 이 기기/브라우저에 저장됩니다.<br/>
+              * “CSV 내보내기”로 개인 기록을 파일로 저장할 수 있습니다.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Leaderboard / Shared result -->
+    <aside class="card">
+      <div class="head">
+        <div>
+          <h3>랭킹 · 공유 결과</h3>
+          <div class="sub">로컬 랭킹(이 브라우저 기준) + 공유 링크로 들어온 결과 표시</div>
+        </div>
+        <div class="pill" id="lbPill">TOP 10</div>
+      </div>
+
+      <div class="body">
+        <div class="card" style="background:var(--card2); border:1px solid var(--line); box-shadow:none">
+          <div class="body" id="sharedBox" style="padding:14px">
+            <div class="muted" style="font-size:12px">공유 링크로 접속하면 여기서 결과가 보입니다.</div>
+            <div style="margin-top:8px; font-weight:800" id="sharedTitle">공유 결과 없음</div>
+            <div style="margin-top:8px; font-size:13px; line-height:1.55" id="sharedDesc" class="muted">
+              테스트를 완료한 뒤 “공유 링크 만들기”를 눌러 친구에게 보내세요.
+            </div>
+          </div>
+        </div>
+
+        <div class="list" style="margin-top:12px">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:44px">#</th>
+                <th>이름</th>
+                <th style="width:90px">평균</th>
+              </tr>
+            </thead>
+            <tbody id="lbTbody"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px" class="row">
+          <button class="btn" id="btnReloadLb">랭킹 새로고침</button>
+          <button class="btn" id="btnRemoveMine">내 기록 삭제</button>
+        </div>
+
+        <div class="mini">
+          <b>정말 “전원 공통 랭킹”이 필요하시면</b><br/>
+          Firebase/서버리스(DB) 1개만 붙이면 됩니다. 원하시면 “Firebase 무료 플랜으로 공용 랭킹 붙인 버전”도 만들어드릴 수 있습니다(호스팅/DB 설정 방법 포함).
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  // ---------- Helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const now = () => performance.now();
+
+  function toast(msg){
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 1400);
+  }
+
+  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+  function ms(n){
+    if (!Number.isFinite(n)) return "-";
+    return Math.round(n) + " ms";
+  }
+
+  function median(arr){
+    const a = [...arr].sort((x,y)=>x-y);
+    const m = Math.floor(a.length/2);
+    return a.length % 2 ? a[m] : (a[m-1] + a[m]) / 2;
+  }
+
+  function mean(arr){
+    return arr.reduce((s,v)=>s+v,0) / arr.length;
+  }
+
+  function stddev(arr){
+    const m = mean(arr);
+    const v = mean(arr.map(x => (x-m)*(x-m)));
+    return Math.sqrt(v);
+  }
+
+  // Compact URL-safe encoding
+  function encodeResult(obj){
+    const json = JSON.stringify(obj);
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    return b64.replaceAll("+","-").replaceAll("/","_").replaceAll("=",".");
+  }
+  function decodeResult(token){
+    const b64 = token.replaceAll("-","+").replaceAll("_","/").replaceAll(".","=");
+    const json = decodeURIComponent(escape(atob(b64)));
+    return JSON.parse(json);
+  }
+
+  // ---------- State ----------
+  const state = {
+    phase: "idle", // idle | waiting | green | done
+    trialIndex: 0,
+    totalTrials: 5,
+    greenAt: 0,
+    timerId: null,
+    results: [],   // ms numbers
+    attempts: [],  // {ms, status}
+    startedAtISO: null,
+    flyingCount: 0,
+  };
+
+  // ---------- Elements ----------
+  const stage = $("stage");
+  const status = $("status");
+  const stageTitle = $("stageTitle");
+  const stageHint = $("stageHint");
+  const stageSmall = $("stageSmall");
+
+  const nameInput = $("name");
+  const trialsSelect = $("trials");
+
+  const btnStart = $("btnStart");
+  const btnReset = $("btnReset");
+  const btnClearLocal = $("btnClearLocal");
+
+  const kpi = $("kpi");
+  const attemptList = $("attemptList");
+  const attemptTbody = $("attemptTbody");
+
+  const shareLink = $("shareLink");
+  const btnMakeShare = $("btnMakeShare");
+  const btnCopyShare = $("btnCopyShare");
+
+  const resultNote = $("resultNote");
+  const btnSaveLocal = $("btnSaveLocal");
+  const btnExportCsv = $("btnExportCsv");
+
+  const lbTbody = $("lbTbody");
+  const btnReloadLb = $("btnReloadLb");
+  const btnRemoveMine = $("btnRemoveMine");
+
+  const sharedTitle = $("sharedTitle");
+  const sharedDesc = $("sharedDesc");
+
+  // ---------- UI ----------
+  function setPhase(phase){
+    state.phase = phase;
+
+    // Visual cues
+    if (phase === "idle"){
+      stage.style.background = "linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12))";
+      status.className = "status warn";
+      status.textContent = "대기";
+      stageTitle.textContent = "시작 버튼을 누르세요";
+      stageHint.textContent = "준비되면 아래 “시작”을 누르고, 초록색으로 바뀌는 순간 반응하세요.";
+      stageSmall.textContent = "클릭 / 스페이스바 가능";
+    } else if (phase === "waiting"){
+      stage.style.background = "linear-gradient(180deg, rgba(255,204,102,.22), rgba(0,0,0,.12))";
+      status.className = "status warn";
+      status.textContent = `준비중 ${state.trialIndex+1}/${state.totalTrials}`;
+      stageTitle.textContent = "기다리세요…";
+      stageHint.textContent = "아직 누르지 마세요. 초록색으로 바뀌면 즉시 반응!";
+      stageSmall.textContent = "플라잉(너무 빠름) 시 무효 처리";
+    } else if (phase === "green"){
+      stage.style.background = "linear-gradient(180deg, rgba(39,209,127,.35), rgba(0,0,0,.12))";
+      status.className = "status good";
+      status.textContent = `지금! ${state.trialIndex+1}/${state.totalTrials}`;
+      stageTitle.textContent = "지금 누르세요!";
+      stageHint.textContent = "클릭 또는 스페이스바!";
+      stageSmall.textContent = "";
+    } else if (phase === "done"){
+      stage.style.background = "linear-gradient(180deg, rgba(85,115,255,.22), rgba(0,0,0,.12))";
+      status.className = "status";
+      status.textContent = "완료";
+      stageTitle.textContent = "측정 완료";
+      stageHint.textContent = "결과를 저장하거나 공유 링크를 만들어 친구에게 보내세요.";
+      stageSmall.textContent = "";
+    }
+  }
+
+  function renderAttempts(){
+    if (state.attempts.length === 0){
+      attemptList.style.display = "none";
+      kpi.style.display = "none";
+      return;
+    }
+    attemptList.style.display = "";
+    attemptTbody.innerHTML = "";
+    state.attempts.forEach((a, idx) => {
+      const tr = document.createElement("tr");
+      const td1 = document.createElement("td");
+      const td2 = document.createElement("td");
+      const td3 = document.createElement("td");
+      td1.textContent = String(idx+1);
+      td2.textContent = a.status === "OK" ? ms(a.ms) : (a.status === "FLYING" ? "무효(너무 빠름)" : "무효");
+      td3.textContent = a.status;
+      td3.style.color = a.status === "OK" ? "var(--good)" : "var(--bad)";
+      tr.append(td1, td2, td3);
+      attemptTbody.appendChild(tr);
+    });
+  }
+
+  function renderStats(){
+    const ok = state.attempts.filter(a => a.status === "OK").map(a => a.ms);
+    if (ok.length === 0){
+      kpi.style.display = "none";
+      btnMakeShare.disabled = true;
+      btnCopyShare.disabled = true;
+      btnSaveLocal.disabled = true;
+      return;
+    }
+    kpi.style.display = "";
+    const avg = mean(ok);
+    const med = median(ok);
+    const best = Math.min(...ok);
+    const sd = ok.length >= 2 ? stddev(ok) : 0;
+
+    $("kAvg").textContent = ms(avg);
+    $("kMed").textContent = ms(med);
+    $("kBest").textContent = ms(best);
+    $("kStd").textContent = ms(sd);
+
+    btnMakeShare.disabled = false;
+    btnSaveLocal.disabled = false;
+  }
+
+  function hardReset(){
+    if (state.timerId) clearTimeout(state.timerId);
+    state.phase = "idle";
+    state.trialIndex = 0;
+    state.totalTrials = parseInt(trialsSelect.value, 10);
+    state.greenAt = 0;
+    state.timerId = null;
+    state.results = [];
+    state.attempts = [];
+    state.startedAtISO = null;
+    state.flyingCount = 0;
+
+    shareLink.value = "";
+    btnCopyShare.disabled = true;
+    btnMakeShare.disabled = true;
+    btnSaveLocal.disabled = true;
+
+    renderAttempts();
+    renderStats();
+    setPhase("idle");
+  }
+
+  // ---------- Test Flow ----------
+  function scheduleGreen(){
+    // Random delay 900 ~ 2600 ms + small jitter
+    const delay = Math.floor(900 + Math.random() * 1700);
+    const jitter = Math.floor(Math.random() * 120);
+
+    state.timerId = setTimeout(() => {
+      state.greenAt = now();
+      setPhase("green");
+    }, delay + jitter);
+  }
+
+  function startTest(){
+    if (state.phase === "waiting" || state.phase === "green") return;
+    hardReset();
+    state.totalTrials = parseInt(trialsSelect.value, 10);
+    state.startedAtISO = new Date().toISOString();
+    state.trialIndex = 0;
+    setPhase("waiting");
+    scheduleGreen();
+  }
+
+  function finishIfDone(){
+    const doneCount = state.attempts.length;
+    if (doneCount >= state.totalTrials){
+      setPhase("done");
+      renderAttempts();
+      renderStats();
+      toast("측정이 완료되었습니다.");
+    } else {
+      // Next round
+      state.trialIndex = doneCount;
+      setPhase("waiting");
+      scheduleGreen();
+    }
+  }
+
+  function registerAttempt(result){
+    state.attempts.push(result);
+    renderAttempts();
+    finishIfDone();
+  }
+
+  function onReact(){
+    if (state.phase === "idle") return;
+
+    if (state.phase === "waiting"){
+      // Flying
+      state.flyingCount += 1;
+      if (state.timerId) clearTimeout(state.timerId);
+      registerAttempt({ ms: NaN, status: "FLYING" });
+      toast("너무 빨랐습니다(무효).");
+      return;
+    }
+
+    if (state.phase === "green"){
+      const rt = now() - state.greenAt;
+      registerAttempt({ ms: clamp(rt, 1, 5000), status: "OK" });
+      toast("기록됨: " + ms(rt));
+      return;
+    }
+
+    if (state.phase === "done"){
+      // optional: restart by tapping stage
+      startTest();
+    }
+  }
+
+  // ---------- Sharing ----------
+  function buildSharePayload(){
+    const ok = state.attempts.filter(a => a.status === "OK").map(a => a.ms);
+    if (ok.length === 0) return null;
+
+    const payload = {
+      v: 1,
+      name: (nameInput.value || "익명").trim().slice(0, 20),
+      trials: state.totalTrials,
+      okCount: ok.length,
+      avg: Math.round(mean(ok)),
+      med: Math.round(median(ok)),
+      best: Math.round(Math.min(...ok)),
+      std: Math.round(ok.length >= 2 ? stddev(ok) : 0),
+      flying: state.flyingCount,
+      ts: state.startedAtISO || new Date().toISOString(),
+      ua: navigator.userAgent.slice(0, 120),
+    };
+    return payload;
+  }
+
+  function makeShareLink(){
+    const payload = buildSharePayload();
+    if (!payload){
+      toast("공유할 결과가 없습니다.");
+      return;
+    }
+    const token = encodeResult(payload);
+    const url = new URL(location.href);
+    url.searchParams.set("r", token);
+    shareLink.value = url.toString();
+    btnCopyShare.disabled = false;
+
+    // Web Share API (mobile)
+    if (navigator.share){
+      navigator.share({
+        title: "반응속도 결과",
+        text: `${payload.name} 평균 ${payload.avg}ms (최고 ${payload.best}ms)`,
+        url: url.toString()
+      }).catch(() => {});
+    }
+
+    toast("공유 링크가 생성되었습니다.");
+  }
+
+  async function copyShare(){
+    if (!shareLink.value) return;
+    try{
+      await navigator.clipboard.writeText(shareLink.value);
+      toast("링크를 복사했습니다.");
+    }catch(e){
+      // Fallback
+      shareLink.select();
+      document.execCommand("copy");
+      toast("링크를 복사했습니다.");
+    }
+  }
+
+  function renderSharedFromUrl(){
+    const url = new URL(location.href);
+    const token = url.searchParams.get("r");
+    if (!token) return;
+
+    try{
+      const r = decodeResult(token);
+      sharedTitle.textContent = `공유 결과: ${r.name}`;
+      const dt = new Date(r.ts);
+      const when = isNaN(dt.getTime()) ? r.ts : dt.toLocaleString();
+      sharedDesc.innerHTML =
+        `<div style="margin-top:6px">
+          <div><b>평균</b> ${ms(r.avg)} · <b>중앙값</b> ${ms(r.med)} · <b>최고</b> ${ms(r.best)} · <b>표준편차</b> ${ms(r.std)}</div>
+          <div style="margin-top:6px" class="muted">유효 ${r.okCount}/${r.trials} · 플라잉 ${r.flying} · 측정시각 ${when}</div>
+        </div>`;
+      toast("공유 결과를 불러왔습니다.");
+    }catch(e){
+      sharedTitle.textContent = "공유 결과 파싱 실패";
+      sharedDesc.textContent = "링크가 손상되었거나 형식이 다릅니다.";
+    }
+  }
+
+  // ---------- Local Leaderboard ----------
+  const LB_KEY = "reaction_test_lb_v1";
+
+  function loadLB(){
+    try{
+      const raw = localStorage.getItem(LB_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr;
+    }catch(e){
+      return [];
+    }
+  }
+
+  function saveLB(arr){
+    localStorage.setItem(LB_KEY, JSON.stringify(arr));
+  }
+
+  function upsertMyRecord(){
+    const payload = buildSharePayload();
+    if (!payload){
+      toast("저장할 유효 결과가 없습니다.");
+      return;
+    }
+    const note = (resultNote.value || "").trim().slice(0, 120);
+    const rec = {
+      id: (payload.name || "익명") + "|" + payload.ts,
+      name: payload.name,
+      avg: payload.avg,
+      best: payload.best,
+      med: payload.med,
+      std: payload.std,
+      okCount: payload.okCount,
+      trials: payload.trials,
+      flying: payload.flying,
+      ts: payload.ts,
+      note
+    };
+
+    const lb = loadLB();
+    lb.push(rec);
+
+    // sort: avg asc, then best asc
+    lb.sort((a,b) => (a.avg - b.avg) || (a.best - b.best));
+
+    // keep top 50 locally
+    const trimmed = lb.slice(0, 50);
+    saveLB(trimmed);
+    renderLB();
+    toast("로컬 랭킹에 저장했습니다.");
+  }
+
+  function renderLB(){
+    const lb = loadLB();
+    const top = lb.slice(0, 10);
+    lbTbody.innerHTML = "";
+    if (top.length === 0){
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 3;
+      td.className = "muted";
+      td.style.padding = "12px 10px";
+      td.textContent = "저장된 기록이 없습니다. 테스트 후 저장해보세요.";
+      tr.appendChild(td);
+      lbTbody.appendChild(tr);
+      return;
+    }
+
+    top.forEach((r, i) => {
+      const tr = document.createElement("tr");
+      const td1 = document.createElement("td");
+      const td2 = document.createElement("td");
+      const td3 = document.createElement("td");
+      td1.textContent = String(i+1);
+      td2.innerHTML = `<div style="font-weight:750">${escapeHtml(r.name)}</div>
+                       <div class="muted" style="font-size:12px; margin-top:2px">최고 ${ms(r.best)} · 유효 ${r.okCount}/${r.trials}</div>`;
+      td3.textContent = ms(r.avg);
+      tr.append(td1, td2, td3);
+      lbTbody.appendChild(tr);
+    });
+  }
+
+  function clearLB(){
+    localStorage.removeItem(LB_KEY);
+    renderLB();
+    toast("로컬 랭킹을 삭제했습니다.");
+  }
+
+  function removeMine(){
+    const myName = (nameInput.value || "").trim();
+    if (!myName){
+      toast("이름을 입력하셔야 삭제할 수 있습니다.");
+      return;
+    }
+    const lb = loadLB();
+    const filtered = lb.filter(r => r.name !== myName);
+    saveLB(filtered);
+    renderLB();
+    toast("해당 이름의 기록을 삭제했습니다.");
+  }
+
+  function exportCsv(){
+    const lb = loadLB();
+    const header = ["name","avg_ms","best_ms","median_ms","std_ms","okCount","trials","flying","timestamp","note"];
+    const rows = lb.map(r => [
+      r.name, r.avg, r.best, r.med, r.std, r.okCount, r.trials, r.flying, r.ts, (r.note||"")
+    ]);
+    const csv = [header, ...rows].map(row => row.map(v => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replaceAll('"','""')}"` : s;
+    }).join(",")).join("\n");
+
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "reaction_test_leaderboard.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("CSV를 다운로드했습니다.");
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, (m) => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+    }[m]));
+  }
+
+  // ---------- Events ----------
+  btnStart.addEventListener("click", startTest);
+  btnReset.addEventListener("click", hardReset);
+  btnClearLocal.addEventListener("click", clearLB);
+
+  btnMakeShare.addEventListener("click", makeShareLink);
+  btnCopyShare.addEventListener("click", copyShare);
+  btnSaveLocal.addEventListener("click", upsertMyRecord);
+  btnExportCsv.addEventListener("click", exportCsv);
+
+  btnReloadLb.addEventListener("click", () => { renderLB(); toast("랭킹을 새로고침했습니다."); });
+  btnRemoveMine.addEventListener("click", removeMine);
+
+  // Stage click / keyboard
+  stage.addEventListener("click", onReact);
+  stage.addEventListener("keydown", (e) => {
+    if (e.code === "Space" || e.key === " "){
+      e.preventDefault();
+      onReact();
+    }
+    if (e.key === "Enter"){
+      e.preventDefault();
+      if (state.phase === "idle" || state.phase === "done") startTest();
+    }
+  });
+
+  // Global spacebar works too
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space" && (state.phase === "waiting" || state.phase === "green")){
+      e.preventDefault();
+      onReact();
+    }
+  }, {passive:false});
+
+  // Trials change updates reset
+  trialsSelect.addEventListener("change", () => {
+    if (state.phase === "idle") state.totalTrials = parseInt(trialsSelect.value, 10);
+  });
+
+  // ---------- Init ----------
+  // Online/offline pill
+  const online = navigator.onLine;
+  $("envPill").textContent = (online ? "온라인 가능 · 단일 HTML" : "오프라인 · 단일 HTML");
+
+  renderLB();
+  renderSharedFromUrl();
+  hardReset();
+})();
+</script>
+</body>
+</html>
